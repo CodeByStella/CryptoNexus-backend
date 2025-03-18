@@ -2,7 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import morgan from 'morgan'
+import morgan from 'morgan';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import routes from './routes';
@@ -14,15 +14,13 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: '*', // Allow all origins
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   }
 });
 
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://192.168.112:3000'],
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
@@ -45,10 +43,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 const PORT = process.env.PORT || 5000;
 
 mongoose
-  .connect(MONGODB_URI)
+  .connect(process.env.MONGODB_URI || "")
   .then(() => {
     httpServer.listen(PORT, () => {
-      console.log("connected to database.")
+      console.log("connected to database.");
       console.log(`server running on port ${PORT}`);
     });
   })
