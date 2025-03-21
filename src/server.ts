@@ -15,13 +15,13 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: '*', // Allow all origins
-    // credentials: true
+    credentials: true
   }
 });
 
 app.use(cors({
   origin: '*', // Allow all origins
-  // credentials: true
+  credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
