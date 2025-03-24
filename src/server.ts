@@ -15,13 +15,13 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: "*",
     credentials: true,
   },
 });
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://192.168.112:3000'],
+  origin: "*",
   credentials: true,
 }));
 app.use(express.json());
@@ -31,8 +31,8 @@ app.use('/uploads', express.static('uploads'));
 
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
-  setupChatSocket(io, socket); 
-  setupMarketSocket(io, socket); 
+  setupChatSocket(io, socket);
+  setupMarketSocket(io, socket);
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
   });
@@ -50,7 +50,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI =
-  process.env.MONGO_URI ||
+  process.env.MONGODB_URI ||
   'mongodb+srv://testuser:test123@free-cluster.xucjn.mongodb.net/actisexa?retryWrites=true&w=majority&appName=free-cluster';
 
 mongoose
