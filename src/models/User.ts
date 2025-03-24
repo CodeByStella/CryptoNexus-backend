@@ -8,16 +8,20 @@ export interface IUser extends Document {
   password: string;
   role: 'user' | 'admin';
   balance: {
-    currency: 'USDT' | 'BTC' | 'USDC' | 'ETH';
+    currency: 'USDT' | 'BTC' | 'USDC' | 'ETH' | 'BNB' | 'XRP' | 'SOL';
     amount: number;
   }[];
   walletAddress?: string;
   referralCode: string;
   referredBy?: mongoose.Types.ObjectId;
   isVerified: boolean;
+  withdrawalPassword?: string;
+  seconds: number;
+  withdrawalRequests: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+  compareWithdrawalPassword(candidatePassword: string): Promise<boolean>;
 }
 
 const UserSchema: Schema = new Schema(
@@ -53,18 +57,20 @@ const UserSchema: Schema = new Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
-    balance: [{
-      currency: {
-        type: String,
-        enum: ['USDT', 'BTC', 'USDC', 'ETH'],
-        required: true,
+    balance: [
+      {
+        currency: {
+          type: String,
+          enum: ['USDT', 'BTC', 'USDC', 'ETH', 'BNB', 'XRP', 'SOL'],
+          required: true,
+        },
+        amount: {
+          type: Number,
+          required: true,
+          default: 0,
+        },
       },
-      amount: {
-        type: Number,
-        required: true,
-        default: 0,
-      },
-    }],
+    ],
     walletAddress: {
       type: String,
       trim: true,
@@ -81,6 +87,20 @@ const UserSchema: Schema = new Schema(
       type: Boolean,
       default: false,
     },
+    withdrawalPassword: {
+      type: String,
+      select: false,
+    },
+    seconds: {
+      type: Number,
+      default: 0,
+    },
+    withdrawalRequests: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Withdrawal',
+      },
+    ],
   },
   {
     timestamps: true,
@@ -92,10 +112,23 @@ UserSchema.pre<IUser>('save', async function (next) {
   if (!this.isModified('password')) {
     return next();
   }
-
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error: any) {
+    next(error);
+  }
+});
+
+// Middleware to hash withdrawal password
+UserSchema.pre<IUser>('save', async function (next) {
+  if (!this.isModified('withdrawalPassword') || !this.withdrawalPassword) {
+    return next();
+  }
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.withdrawalPassword = await bcrypt.hash(this.withdrawalPassword, salt);
     next();
   } catch (error: any) {
     next(error);
@@ -126,16 +159,25 @@ UserSchema.pre<IUser>('save', function (next) {
       { currency: 'BTC', amount: 0 },
       { currency: 'USDC', amount: 0 },
       { currency: 'ETH', amount: 0 },
+      { currency: 'BNB', amount: 0 },
+      { currency: 'XRP', amount: 0 },
+      { currency: 'SOL', amount: 0 },
     ];
   }
   next();
 });
 
 // Compare password method
-UserSchema.methods.comparePassword = async function (
-  candidatePassword: string
-): Promise<boolean> {
+UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Compare withdrawal password method
+UserSchema.methods.compareWithdrawalPassword = async function (candidatePassword: string): Promise<boolean> {
+  if (!this.withdrawalPassword) {
+    return false;
+  }
+  return bcrypt.compare(candidatePassword, this.withdrawalPassword);
 };
 
 // Transform _id to id for API responses
@@ -148,4 +190,4 @@ UserSchema.set('toJSON', {
   },
 });
 
-export default mongoose.model<IUser>('User', UserSchema);
+export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

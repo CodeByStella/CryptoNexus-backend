@@ -5,24 +5,32 @@ import User from '../models/User';
 import Transaction from '../models/Transaction';
 import mongoose from 'mongoose';
 
-export const createTrade = async (req: Request, res: Response): Promise<any> => {
+export const createTrade = async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
-    const { tradeType, fromCurrency, toCurrency, amount, expectedPrice } = req.body;
+    const { tradeType, fromCurrency, toCurrency, amount, expectedPrice, tradeMode, profit } = req.body;
     const userId = req.user?._id;
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
 
     if (!['buy', 'sell'].includes(tradeType)) {
-      console.log("dkofjsd")
-      return res.status(400).json({ message: 'Invalid trade type. Must be "buy" or "sell".' });
+      console.log("Invalid trade type");
+      res.status(400).json({ message: 'Invalid trade type. Must be "buy" or "sell".' });
+      return;
+    }
+
+    if (!['Swap', 'Spot', 'Seconds'].includes(tradeMode)) {
+      res.status(400).json({ message: 'Invalid trade mode. Must be "Swap", "Spot", or "Seconds".' });
+      return;
     }
 
     const trade = new Trade({
@@ -33,12 +41,14 @@ export const createTrade = async (req: Request, res: Response): Promise<any> => 
       amount,
       expectedPrice,
       status: 'pending',
+      tradeMode, // Add tradeMode
+      profit: profit || 0, // Add profit, default to 0 if not provided
     });
 
     const savedTrade = await trade.save();
 
     res.status(201).json({
-      trade: savedTrade.toJSON(), 
+      trade: savedTrade.toJSON(),
       message: 'Trade request submitted successfully. Awaiting admin approval.',
     });
   } catch (error) {
@@ -47,17 +57,19 @@ export const createTrade = async (req: Request, res: Response): Promise<any> => 
   }
 };
 
-export const getUserTrades = async (req: Request, res: Response): Promise<any> => {
+export const getUserTrades = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log("in the file")
+    console.log("in the file");
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const status = req.query.status as string;
     const tradeType = req.query.tradeType as string;
+    const tradeMode = req.query.tradeMode as string; // Add tradeMode filter
 
     const filter: any = { user: req.user?._id };
     if (status) filter.status = status;
     if (tradeType) filter.tradeType = tradeType;
+    if (tradeMode) filter.tradeMode = tradeMode; // Apply tradeMode filter
 
     const total = await Trade.countDocuments(filter);
 
@@ -70,7 +82,7 @@ export const getUserTrades = async (req: Request, res: Response): Promise<any> =
       trades,
       page,
       pages: Math.ceil(total / limit),
-      total
+      total,
     });
   } catch (error) {
     console.error('Get trades error:', error);
@@ -78,53 +90,58 @@ export const getUserTrades = async (req: Request, res: Response): Promise<any> =
   }
 };
 
-export const getTrade = async (req: Request, res: Response): Promise<any> => {
+export const getTrade = async (req: Request, res: Response): Promise<void> => {
   try {
-    const trade = await Trade.findById(req.params.id)
-      .populate('transactionId');
+    const trade = await Trade.findById(req.params.id).populate('transactionId');
 
     if (!trade) {
-      return res.status(404).json({ message: 'Trade not found' });
+      res.status(404).json({ message: 'Trade not found' });
+      return;
     }
 
     if (
       trade.user.toString() !== req.user?._id.toString() &&
       req.user?.role !== 'admin'
     ) {
-      return res.status(403).json({ message: 'Not authorized to access this trade' });
+      res.status(403).json({ message: 'Not authorized to access this trade' });
+      return;
     }
 
     res.json(trade);
   } catch (error) {
     console.error('Get trade error:', error);
-    
+
     // Handle invalid ID error
     if (error instanceof mongoose.Error.CastError) {
-      return res.status(400).json({ message: 'Invalid trade ID' });
+      res.status(400).json({ message: 'Invalid trade ID' });
+      return;
     }
-    
+
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-export const cancelTrade = async (req: Request, res: Response) => {
+export const cancelTrade = async (req: Request, res: Response): Promise<void> => {
   try {
     const trade = await Trade.findById(req.params.id);
 
     if (!trade) {
-      return res.status(404).json({ message: 'Trade not found' });
+      res.status(404).json({ message: 'Trade not found' });
+      return;
     }
 
     // Check if trade belongs to user
     if (trade.user.toString() !== req.user?._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to cancel this trade' });
+      res.status(403).json({ message: 'Not authorized to cancel this trade' });
+      return;
     }
 
     // Check if trade is in a cancellable state
     if (trade.status !== 'pending') {
-      return res.status(400).json({ 
-        message: `Cannot cancel trade with status ${trade.status}. Only pending trades can be cancelled.` 
+      res.status(400).json({
+        message: `Cannot cancel trade with status ${trade.status}. Only pending trades can be cancelled.`,
       });
+      return;
     }
 
     trade.status = 'cancelled';
@@ -132,7 +149,7 @@ export const cancelTrade = async (req: Request, res: Response) => {
 
     res.json({
       trade: updatedTrade,
-      message: 'Trade cancelled successfully'
+      message: 'Trade cancelled successfully',
     });
   } catch (error) {
     console.error('Cancel trade error:', error);
@@ -140,18 +157,20 @@ export const cancelTrade = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllTrades = async (req: Request, res: Response) => {
+export const getAllTrades = async (req: Request, res: Response): Promise<void> => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const status = req.query.status as string;
     const tradeType = req.query.tradeType as string;
+    const tradeMode = req.query.tradeMode as string; // Add tradeMode filter
     const userId = req.query.userId as string;
 
     // Build filter
     const filter: any = {};
     if (status) filter.status = status;
     if (tradeType) filter.tradeType = tradeType;
+    if (tradeMode) filter.tradeMode = tradeMode; // Apply tradeMode filter
     if (userId) filter.user = userId;
 
     // Count total documents with filter
@@ -169,7 +188,7 @@ export const getAllTrades = async (req: Request, res: Response) => {
       trades,
       page,
       pages: Math.ceil(total / limit),
-      total
+      total,
     });
   } catch (error) {
     console.error('Get all trades error:', error);
@@ -177,31 +196,34 @@ export const getAllTrades = async (req: Request, res: Response) => {
   }
 };
 
-export const processTrade = async (req: Request, res: Response): Promise<any> => {
+export const processTrade = async (req: Request, res: Response): Promise<void> => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return;
     }
 
-    const { status, executedPrice, adminNotes } = req.body;
+    const { status, executedPrice, adminNotes, profit } = req.body;
     const trade = await Trade.findById(req.params.id).session(session);
 
     if (!trade) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({ message: 'Trade not found' });
+      res.status(404).json({ message: 'Trade not found' });
+      return;
     }
 
     if (trade.status !== 'pending' && trade.status !== 'approved') {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ 
-        message: `Cannot process trade with status ${trade.status}` 
+      res.status(400).json({
+        message: `Cannot process trade with status ${trade.status}`,
       });
+      return;
     }
 
     // Get user
@@ -209,7 +231,8 @@ export const processTrade = async (req: Request, res: Response): Promise<any> =>
     if (!user) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
 
     // Update trade status
@@ -217,6 +240,7 @@ export const processTrade = async (req: Request, res: Response): Promise<any> =>
     trade.adminNotes = adminNotes || trade.adminNotes;
     trade.approvedBy = req.user?._id;
     trade.approvedAt = new Date();
+    if (profit !== undefined) trade.profit = profit; // Update profit if provided
 
     if (status === 'approved') {
       trade.executedPrice = executedPrice || trade.expectedPrice;
@@ -224,24 +248,26 @@ export const processTrade = async (req: Request, res: Response): Promise<any> =>
       if (!trade.executedPrice && !executedPrice) {
         await session.abortTransaction();
         session.endSession();
-        return res.status(400).json({ 
-          message: 'Executed price is required to complete a trade' 
+        res.status(400).json({
+          message: 'Executed price is required to complete a trade',
         });
+        return;
       }
-      
+
       trade.executedPrice = executedPrice || trade.executedPrice;
       trade.completedAt = new Date();
 
       // Update user balance based on trade type and create transaction record
       let transaction;
-      
+
       if (trade.tradeType === 'buy') {
         // Find the balance entry for the purchased currency
-        const toBalance = user.balance.find(b => b.currency === trade.toCurrency);
+        const toBalance = user.balance.find((b: { currency: string; }) => b.currency === trade.toCurrency);
         if (!toBalance) {
           await session.abortTransaction();
           session.endSession();
-          return res.status(500).json({ message: `User balance missing ${trade.toCurrency}` });
+          res.status(500).json({ message: `User balance missing ${trade.toCurrency}` });
+          return;
         }
 
         // Create transaction for the purchase
@@ -253,25 +279,27 @@ export const processTrade = async (req: Request, res: Response): Promise<any> =>
           status: 'completed',
           description: `Purchase of ${trade.amount} ${trade.toCurrency} at ${trade.executedPrice} ${trade.fromCurrency} each`,
           approvedBy: req.user?._id,
-          approvedAt: new Date()
+          approvedAt: new Date(),
         });
 
         // Add the purchased amount to the specific currency's balance
         toBalance.amount += trade.amount;
       } else if (trade.tradeType === 'sell') {
         // Find the balance entry for the sold currency
-        const fromBalance = user.balance.find(b => b.currency === trade.fromCurrency);
+        const fromBalance = user.balance.find((b: { currency: string; }) => b.currency === trade.fromCurrency);
         if (!fromBalance) {
           await session.abortTransaction();
           session.endSession();
-          return res.status(500).json({ message: `User balance missing ${trade.fromCurrency}` });
+          res.status(500).json({ message: `User balance missing ${trade.fromCurrency}` });
+          return;
         }
 
         // Check if user has sufficient balance for the sold currency
         if (fromBalance.amount < trade.amount) {
           await session.abortTransaction();
           session.endSession();
-          return res.status(400).json({ message: `User has insufficient ${trade.fromCurrency} balance` });
+          res.status(400).json({ message: `User has insufficient ${trade.fromCurrency} balance` });
+          return;
         }
 
         // Create transaction for the sale
@@ -283,7 +311,7 @@ export const processTrade = async (req: Request, res: Response): Promise<any> =>
           status: 'completed',
           description: `Sale of ${trade.amount} ${trade.fromCurrency} at ${trade.executedPrice} ${trade.toCurrency} each`,
           approvedBy: req.user?._id,
-          approvedAt: new Date()
+          approvedAt: new Date(),
         });
 
         // Deduct the sold amount from the specific currency's balance
@@ -301,18 +329,18 @@ export const processTrade = async (req: Request, res: Response): Promise<any> =>
     }
 
     const updatedTrade = await trade.save({ session });
-    
+
     await session.commitTransaction();
     session.endSession();
 
     res.json({
       trade: updatedTrade,
-      message: `Trade ${status} successfully`
+      message: `Trade ${status} successfully`,
     });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    
+
     console.error('Process trade error:', error);
     res.status(500).json({ message: 'Server error' });
   }

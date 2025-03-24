@@ -16,6 +16,8 @@ export interface ITrade extends Document {
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  tradeMode: 'Swap' | 'Spot' | 'Seconds'; // Added tradeMode
+  profit?: number; // Added profit
 }
 
 const TradeSchema: Schema = new Schema<ITrade>(
@@ -71,6 +73,15 @@ const TradeSchema: Schema = new Schema<ITrade>(
     completedAt: {
       type: Date,
     },
+    tradeMode: {
+      type: String,
+      enum: ['Swap', 'Spot', 'Seconds'],
+      required: true, // Make it required to align with frontend
+    },
+    profit: {
+      type: Number,
+      default: 0, // Optional field, default to 0
+    },
   },
   {
     timestamps: true,
@@ -79,7 +90,14 @@ const TradeSchema: Schema = new Schema<ITrade>(
 
 TradeSchema.set('toJSON', {
   transform: (doc, ret) => {
-    ret.id = ret._id;
+    ret.id = ret._id.toString();
+    ret.user = ret.user?.toString();
+    ret.transactionId = ret.transactionId?.toString();
+    ret.approvedBy = ret.approvedBy?.toString();
+    ret.createdAt = ret.createdAt.toISOString();
+    ret.updatedAt = ret.updatedAt.toISOString();
+    ret.approvedAt = ret.approvedAt?.toISOString();
+    ret.completedAt = ret.completedAt?.toISOString();
     delete ret._id;
     delete ret.__v;
     return ret;

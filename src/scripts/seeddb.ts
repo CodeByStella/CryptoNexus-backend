@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import DepositAddress from "@/models/Addresses";
 
 const seedDepositAddresses = async () => {
-  const MONGODB_URI = process.env.MONGO_URI || "mongodb+srv://testuser:testUser123@free-cluster.xucjn.mongodb.net/actisexa?retryWrites=true&w=majority&appName=free-cluster";
+  const MONGODB_URI = process.env.MONGO_URI || "mongodb+srv://testuser:test123@free-cluster.xucjn.mongodb.net/actisexa?retryWrites=true&w=majority&appName=free-cluster";
   
   mongoose
     .connect(MONGODB_URI)

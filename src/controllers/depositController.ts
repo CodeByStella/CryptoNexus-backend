@@ -88,7 +88,6 @@ class DepositAddressController {
         return res.status(404).json({ message: "Deposit not found" });
       }
 
-      // If deposit is accepted, update user's balance
       if (status === "accepted") {
         const user = await User.findById(updatedDeposit.user).session(session);
         if (!user) {
@@ -97,18 +96,15 @@ class DepositAddressController {
           return res.status(404).json({ message: "User not found" });
         }
 
-        // Find the balance entry for the deposited token
-        const tokenBalance = user.balance.find(b => b.currency === updatedDeposit.token);
+        const tokenBalance = user.balance.find((b: { currency: string; }) => b.currency === updatedDeposit.token);
         if (!tokenBalance) {
           await session.abortTransaction();
           session.endSession();
           return res.status(500).json({ message: `User balance missing ${updatedDeposit.token}` });
         }
 
-        // Add the deposited amount to the user's balance
         tokenBalance.amount += updatedDeposit.amount;
 
-        // Save the updated user
         await user.save({ session });
       }
 

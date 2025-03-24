@@ -2,8 +2,10 @@ import express from 'express';
 import { getAllTrades, processTrade } from '../controllers/tradeController';
 import { getDepositAddresses, updateDepositAddress, createDepositAddress } from '../controllers/depositAddressController';
 import { getAllUsers, updateUserBalance } from '@/controllers/adminUsers';
+import { Router } from 'express';
 
-const router = express.Router();
+
+const router = Router();
 
 router.get('/trades', getAllTrades);
 router.put('/trades/:id/process', processTrade);
