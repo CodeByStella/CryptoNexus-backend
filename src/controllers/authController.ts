@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const ADMIN_EMAILS = ['basilgoodluck22@gmail.com', 'testadmin1@example.com'];
+const ADMIN_EMAILS = ['david@admin.com', 'okovtun747@gmail.com'];
 
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
