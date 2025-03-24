@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { CoinData } from '../types/coinData';
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const COINMARKETCAP_API_URL = 'https://pro-api.coinmarketcap.com/v1';
 const COINGECKO_API_URL = 'https://api.coingecko.com/api/v3';

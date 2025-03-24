@@ -3,6 +3,9 @@ import { validationResult } from 'express-validator';
 import User from '../models/User';
 import { generateToken, generateReferralCode } from '../utils/tokenUtils';
 import generateUID from '@/utils/generateUID';
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const ADMIN_EMAILS = ['basilgoodluck22@gmail.com', 'testadmin1@example.com'];
 
