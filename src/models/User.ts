@@ -8,7 +8,7 @@ export interface IUser extends Document {
   password: string;
   role: 'user' | 'admin';
   balance: {
-    currency: 'USDT' | 'BTC' | 'USDC' | 'ETH' | 'BNB' | 'XRP' | 'SOL';
+    currency: 'USDT' | 'BTC' | 'USDC' | 'ETH' ;
     amount: number;
   }[];
   walletAddress?: string;
@@ -158,10 +158,7 @@ UserSchema.pre<IUser>('save', function (next) {
       { currency: 'USDT', amount: 0 },
       { currency: 'BTC', amount: 0 },
       { currency: 'USDC', amount: 0 },
-      { currency: 'ETH', amount: 0 },
-      { currency: 'BNB', amount: 0 },
-      { currency: 'XRP', amount: 0 },
-      { currency: 'SOL', amount: 0 },
+      { currency: 'ETH', amount: 0 }
     ];
   }
   next();
