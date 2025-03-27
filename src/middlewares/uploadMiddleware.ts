@@ -3,6 +3,9 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
+import { config } from 'dotenv';
+
+config()
 
 const uploadDir = 'uploads';
 if (!fs.existsSync(uploadDir)) {

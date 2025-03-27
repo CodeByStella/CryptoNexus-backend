@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User';
+import { config } from 'dotenv';
+
+
+config();
 
 declare global {
   namespace Express {
@@ -15,8 +19,8 @@ interface IJwtPayload {
 }
 
 export const protect = async (
-  req: Request, 
-  res: Response, 
+  req: Request,
+  res: Response,
   next: NextFunction
 ): Promise<any> => {
   let token;
@@ -27,7 +31,7 @@ export const protect = async (
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      console.log(token)
+      console.log(token);
 
       const decoded = jwt.verify(
         token,

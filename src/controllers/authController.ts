@@ -3,6 +3,9 @@ import { validationResult } from 'express-validator';
 import User from '../models/User';
 import { generateToken, generateReferralCode } from '../utils/tokenUtils';
 import generateUID from '@/utils/generateUID';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const ADMIN_EMAILS = ['admin@gmail.com', 'test@gmail.com'];
 
@@ -92,14 +95,14 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 export const login = async (req: Request, res: Response): Promise<any> => {
   try {
     console.log('Login request body:', req.body);
-    
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, phone, identifier, password } = req.body || {};
-    
+
     const loginIdentifier = identifier || email || phone;
 
     if (!loginIdentifier) {
@@ -112,7 +115,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     let user = null;
     const isPhone = /^\d+$/.test(loginIdentifier);
-    
+
     if (isPhone) {
       user = await User.findOne({ phone: loginIdentifier }).select('+password');
     } else {
@@ -145,9 +148,9 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     });
   } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      message: 'Authentication failed', 
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    res.status(500).json({
+      message: 'Authentication failed',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -208,7 +211,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     if (req.body.walletAddress) {
       user.walletAddress = req.body.walletAddress;
     }
-    
+
     if (req.body.password) {
       // Password hashing is handled in the model
       user.password = req.body.password;
