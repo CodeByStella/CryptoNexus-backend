@@ -13,6 +13,7 @@ export const createTrade = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Map frontend field names to server field names
     const { tradeType, fromCurrency, toCurrency, amount, expectedPrice, tradeMode, profit } = req.body;
     const userId = req.user?._id;
 
@@ -33,16 +34,23 @@ export const createTrade = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Prevent "Seconds" trades from being created via this endpoint
+    if (tradeMode === 'Seconds') {
+      res.status(400).json({ message: 'Seconds trades cannot be created directly. Use the Seconds request workflow.' });
+      return;
+    }
+
     const trade = new Trade({
       user: userId,
       tradeType,
       fromCurrency,
       toCurrency,
-      amount,
+      principalAmount: amount, // Map 'amount' from frontend to 'principalAmount'
+      profitAmount: profit || 0, // Map 'profit' from frontend to 'profitAmount'
+      // totalPayout will be calculated by the pre-save hook
       expectedPrice,
       status: 'pending',
-      tradeMode, // Add tradeMode
-      profit: profit || 0, // Add profit, default to 0 if not provided
+      tradeMode,
     });
 
     const savedTrade = await trade.save();
@@ -59,24 +67,48 @@ export const createTrade = async (req: Request, res: Response): Promise<void> =>
 
 export const getUserTrades = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log("in the file");
+    console.log("Fetching user trades...");
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const status = req.query.status as string;
     const tradeType = req.query.tradeType as string;
-    const tradeMode = req.query.tradeMode as string; // Add tradeMode filter
+    const tradeMode = req.query.tradeMode as string;
 
     const filter: any = { user: req.user?._id };
-    if (status) filter.status = status;
-    if (tradeType) filter.tradeType = tradeType;
-    if (tradeMode) filter.tradeMode = tradeMode; // Apply tradeMode filter
+
+    // Apply tradeType filter
+    if (tradeType) {
+      filter.tradeType = tradeType;
+    }
+
+    // Apply tradeMode filter
+    if (tradeMode) {
+      filter.tradeMode = tradeMode;
+    }
+
+    // Apply status filter (if provided, e.g., from frontend)
+    if (status) {
+      filter.status = status;
+    }
 
     const total = await Trade.countDocuments(filter);
+    console.log('Total trades matching filter:', total);
 
     const trades = await Trade.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 }) // Newest first
       .skip((page - 1) * limit)
       .limit(limit);
+
+    // Log the trades to verify filtering and sorting
+    console.log('Fetched trades:', trades.map(t => ({
+      id: t._id,
+      createdAt: t.createdAt,
+      status: t.status,
+      tradeMode: t.tradeMode,
+      principalAmount: t.principalAmount, // Use new field name in logs
+      profitAmount: t.profitAmount, // Use new field name in logs
+      totalPayout: t.totalPayout, // Use new field in logs
+    })));
 
     res.json({
       trades,
@@ -163,14 +195,14 @@ export const getAllTrades = async (req: Request, res: Response): Promise<void> =
     const limit = parseInt(req.query.limit as string) || 10;
     const status = req.query.status as string;
     const tradeType = req.query.tradeType as string;
-    const tradeMode = req.query.tradeMode as string; // Add tradeMode filter
+    const tradeMode = req.query.tradeMode as string;
     const userId = req.query.userId as string;
 
     // Build filter
     const filter: any = {};
     if (status) filter.status = status;
     if (tradeType) filter.tradeType = tradeType;
-    if (tradeMode) filter.tradeMode = tradeMode; // Apply tradeMode filter
+    if (tradeMode) filter.tradeMode = tradeMode;
     if (userId) filter.user = userId;
 
     // Count total documents with filter
@@ -207,6 +239,7 @@ export const processTrade = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Map frontend field names to server field names
     const { status, executedPrice, adminNotes, profit } = req.body;
     const trade = await Trade.findById(req.params.id).session(session);
 
@@ -240,7 +273,10 @@ export const processTrade = async (req: Request, res: Response): Promise<void> =
     trade.adminNotes = adminNotes || trade.adminNotes;
     trade.approvedBy = req.user?._id;
     trade.approvedAt = new Date();
-    if (profit !== undefined) trade.profit = profit; // Update profit if provided
+    if (profit !== undefined) {
+      trade.profitAmount = profit; // Map 'profit' from frontend to 'profitAmount'
+      // totalPayout will be updated by the pre-save hook
+    }
 
     if (status === 'approved') {
       trade.executedPrice = executedPrice || trade.expectedPrice;
@@ -262,7 +298,7 @@ export const processTrade = async (req: Request, res: Response): Promise<void> =
 
       if (trade.tradeType === 'buy') {
         // Find the balance entry for the purchased currency
-        const toBalance = user.balance.find((b: { currency: string; }) => b.currency === trade.toCurrency);
+        const toBalance = user.balance.find((b: { currency: string }) => b.currency === trade.toCurrency);
         if (!toBalance) {
           await session.abortTransaction();
           session.endSession();
@@ -274,19 +310,19 @@ export const processTrade = async (req: Request, res: Response): Promise<void> =
         transaction = new Transaction({
           user: user._id,
           type: 'trade',
-          amount: trade.amount,
+          amount: trade.principalAmount, // Use 'principalAmount'
           currency: trade.toCurrency,
           status: 'completed',
-          description: `Purchase of ${trade.amount} ${trade.toCurrency} at ${trade.executedPrice} ${trade.fromCurrency} each`,
+          description: `Purchase of ${trade.principalAmount} ${trade.toCurrency} at ${trade.executedPrice} ${trade.fromCurrency} each`,
           approvedBy: req.user?._id,
           approvedAt: new Date(),
         });
 
         // Add the purchased amount to the specific currency's balance
-        toBalance.amount += trade.amount;
+        toBalance.amount += trade.principalAmount; // Use 'principalAmount'
       } else if (trade.tradeType === 'sell') {
         // Find the balance entry for the sold currency
-        const fromBalance = user.balance.find((b: { currency: string; }) => b.currency === trade.fromCurrency);
+        const fromBalance = user.balance.find((b: { currency: string }) => b.currency === trade.fromCurrency);
         if (!fromBalance) {
           await session.abortTransaction();
           session.endSession();
@@ -295,7 +331,7 @@ export const processTrade = async (req: Request, res: Response): Promise<void> =
         }
 
         // Check if user has sufficient balance for the sold currency
-        if (fromBalance.amount < trade.amount) {
+        if (fromBalance.amount < trade.principalAmount) { // Use 'principalAmount'
           await session.abortTransaction();
           session.endSession();
           res.status(400).json({ message: `User has insufficient ${trade.fromCurrency} balance` });
@@ -306,16 +342,16 @@ export const processTrade = async (req: Request, res: Response): Promise<void> =
         transaction = new Transaction({
           user: user._id,
           type: 'trade',
-          amount: trade.amount,
+          amount: trade.principalAmount, // Use 'principalAmount'
           currency: trade.fromCurrency,
           status: 'completed',
-          description: `Sale of ${trade.amount} ${trade.fromCurrency} at ${trade.executedPrice} ${trade.toCurrency} each`,
+          description: `Sale of ${trade.principalAmount} ${trade.fromCurrency} at ${trade.executedPrice} ${trade.toCurrency} each`,
           approvedBy: req.user?._id,
           approvedAt: new Date(),
         });
 
         // Deduct the sold amount from the specific currency's balance
-        fromBalance.amount -= trade.amount;
+        fromBalance.amount -= trade.principalAmount; // Use 'principalAmount'
       }
 
       // Save transaction and link to trade

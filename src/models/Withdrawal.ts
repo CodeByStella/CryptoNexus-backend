@@ -29,7 +29,7 @@ const WithdrawalSchema: Schema = new Schema(
     },
     token: {
       type: String,
-      enum: ['USDT', 'BTC', 'USDC', 'ETH'],
+      enum: ['USDT', 'BTC', 'USDC', 'ETH', 'BNB', 'XRP', 'SOL'],
       required: true,
     },
     address: {

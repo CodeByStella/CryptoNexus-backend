@@ -9,7 +9,7 @@ const DepositAddressSchema = new mongoose.Schema(
     addresses: [
       {
         chain: { type: String, required: true },
-        address: { type: String, required: true },
+        address: { type: String, required: true, unique: true },
       },
     ],
   },

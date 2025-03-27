@@ -5,10 +5,12 @@ export interface ITrade extends Document {
   tradeType: 'buy' | 'sell';
   fromCurrency: string;
   toCurrency: string;
-  amount: number;
+  principalAmount: number;
+  profitAmount: number;
+  totalPayout: number;
   expectedPrice: number;
   executedPrice?: number;
-  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
+  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled' | 'timedout';
   transactionId?: mongoose.Types.ObjectId;
   adminNotes?: string;
   approvedBy?: mongoose.Types.ObjectId;
@@ -16,8 +18,7 @@ export interface ITrade extends Document {
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-  tradeMode: 'Swap' | 'Spot' | 'Seconds'; // Added tradeMode
-  profit?: number; // Added profit
+  tradeMode: 'Swap' | 'Spot' | 'Seconds';
 }
 
 const TradeSchema: Schema = new Schema<ITrade>(
@@ -40,9 +41,19 @@ const TradeSchema: Schema = new Schema<ITrade>(
       type: String,
       required: true,
     },
-    amount: {
+    principalAmount: {
       type: Number,
       required: true,
+    },
+    profitAmount: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    totalPayout: {
+      type: Number,
+      required: true,
+      default: 0, // Add default value to avoid validation errors
     },
     expectedPrice: {
       type: Number,
@@ -53,7 +64,7 @@ const TradeSchema: Schema = new Schema<ITrade>(
     },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected', 'completed', 'cancelled'],
+      enum: ['pending', 'approved', 'rejected', 'completed', 'cancelled', 'timedout'],
       default: 'pending',
     },
     transactionId: {
@@ -76,17 +87,23 @@ const TradeSchema: Schema = new Schema<ITrade>(
     tradeMode: {
       type: String,
       enum: ['Swap', 'Spot', 'Seconds'],
-      required: true, // Make it required to align with frontend
-    },
-    profit: {
-      type: Number,
-      default: 0, // Optional field, default to 0
+      required: true,
     },
   },
   {
     timestamps: true,
   }
 );
+
+// Add pre-save hook to calculate totalPayout
+TradeSchema.pre<ITrade>('save', function (next) {
+  // Always calculate totalPayout to ensure it’s set, even if principalAmount or profitAmount isn’t modified
+  if (typeof this.principalAmount !== 'number' || typeof this.profitAmount !== 'number') {
+    return next(new Error('principalAmount and profitAmount must be numbers'));
+  }
+  this.totalPayout = this.principalAmount + this.profitAmount;
+  next();
+});
 
 TradeSchema.set('toJSON', {
   transform: (doc, ret) => {

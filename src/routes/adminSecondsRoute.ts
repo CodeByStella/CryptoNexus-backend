@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import { getPendingSecondsRequests, approveSecondsRequest, rejectSecondsRequest } from '@/controllers/adminSecondsController';
-import { admin } from '@/middlewares/authMiddleware';
-
 
 const router = Router();
 
