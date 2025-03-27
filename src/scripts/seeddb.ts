@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 import DepositAddress from "@/models/Addresses";
+import dotenv from 'dotenv';
+
+dotenv.config()
 
 const seedDepositAddresses = async () => {
   const MONGODB_URI = process.env.MONGO_URI || "mongodb+srv://testuser:test123@free-cluster.xucjn.mongodb.net/actisexa?retryWrites=true&w=majority&appName=free-cluster";
