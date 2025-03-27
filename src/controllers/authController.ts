@@ -4,7 +4,7 @@ import User from '../models/User';
 import { generateToken, generateReferralCode } from '../utils/tokenUtils';
 import generateUID from '@/utils/generateUID';
 
-const ADMIN_EMAILS = ['basilgoodluck22@gmail.com', 'testadmin1@example.com'];
+const ADMIN_EMAILS = ['admin@gmail.com', 'test@gmail.com'];
 
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
