@@ -5,7 +5,7 @@ import Trade from '@/models/Trade';
 
 // Helper function for profit percentage
 const getProfitPercentage = (seconds: number): number => {
-  const profitMap: { [key: number]: number } = {
+  const profitMap: { [key: number]: number; } = {
     30: 6,
     60: 9,
     90: 13,
@@ -47,7 +47,7 @@ export const requestSeconds = async (req: Request, res: Response): Promise<any> 
     }
 
     // Check balance
-    const usdtBalance = user.balance.find((b: { currency: string }) => b.currency === 'USDT');
+    const usdtBalance = user.balance.find((b: { currency: string; }) => b.currency === 'USDT');
     if (!usdtBalance || usdtBalance.amount < amount) {
       return res.status(400).json({ message: 'Insufficient USDT balance' });
     }
@@ -84,6 +84,7 @@ export const requestSeconds = async (req: Request, res: Response): Promise<any> 
         toCurrency,
         amount,
         expectedPrice: openPrice,
+        principalAmount: amount,
         tradeMode: 'Seconds',
         profit,
         status: 'completed',
@@ -162,7 +163,7 @@ export const handleTimeout = async (req: Request, res: Response): Promise<any> =
     let balanceDeducted = false;
     const user = await User.findById(request.user);
     if (user) {
-      const usdtBalance = user.balance.find((b: { currency: string }) => b.currency === 'USDT');
+      const usdtBalance = user.balance.find((b: { currency: string; }) => b.currency === 'USDT');
       if (usdtBalance && usdtBalance.amount >= request.amount) {
         usdtBalance.amount -= request.amount;
         balanceDeducted = true;
@@ -221,7 +222,7 @@ export const getSecondsRequest = async (req: Request, res: Response): Promise<an
 
     let profit = 0;
     let totalAmount = secondsRequest.amount;
-    
+
     if (secondsRequest.status === 'approved') {
       if (trade) {
         profit = trade.profitAmount || 0;
