@@ -82,6 +82,7 @@ export const requestSeconds = async (req: Request, res: Response): Promise<any> 
         fromCurrency,
         toCurrency,
         amount,
+        profitAmount:profit,
         expectedPrice: openPrice,
         principalAmount: amount,
         tradeMode: 'Seconds',
