@@ -5,6 +5,17 @@ import User from '../models/User';
 import Transaction from '../models/Transaction';
 import mongoose from 'mongoose';
 
+const getProfitPercentage = (seconds: number) => {
+  const profitMap: { [key: number]: number; } = {
+    30: 12,
+    60: 18,
+    90: 25,
+    180: 32,
+    300: 45,
+  };
+  return profitMap[seconds] || 6; // Default to 6% if seconds not found
+};
+
 export const createTrade = async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
@@ -15,6 +26,8 @@ export const createTrade = async (req: Request, res: Response): Promise<void> =>
 
     // Map frontend field names to server field names
     const { tradeType, fromCurrency, toCurrency, amount, expectedPrice, tradeMode, profit } = req.body;
+
+    console.log(req.body,"==============>createTrade")
     const userId = req.user?._id;
 
     const user = await User.findById(userId);
@@ -39,6 +52,22 @@ export const createTrade = async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({ message: 'Seconds trades cannot be created directly. Use the Seconds request workflow.' });
       return;
     }
+
+    // if (user.canWinSeconds) {
+    //   const profitPercentage = getProfitPercentage(secondsRequest.seconds);
+    //   const pureProfit = secondsRequest.amount * (profitPercentage / 100);
+    //   const totalPayout = secondsRequest.amount + pureProfit;
+
+    //   // Update user balance
+    //   const user = await User.findById(secondsRequest.user);
+    //   if (user) {
+    //     const usdtBalance = user.balance.find((b: { currency: string; }) => b.currency === 'USDT');
+    //     if (usdtBalance) {
+    //       usdtBalance.amount += totalPayout;
+    //       await user.save();
+    //     }
+    //   }
+    // }
 
     const trade = new Trade({
       user: userId,
@@ -298,7 +327,7 @@ export const processTrade = async (req: Request, res: Response): Promise<void> =
 
       if (trade.tradeType === 'buy') {
         // Find the balance entry for the purchased currency
-        const toBalance = user.balance.find((b: { currency: string }) => b.currency === trade.toCurrency);
+        const toBalance = user.balance.find((b: { currency: string; }) => b.currency === trade.toCurrency);
         if (!toBalance) {
           await session.abortTransaction();
           session.endSession();
@@ -322,7 +351,7 @@ export const processTrade = async (req: Request, res: Response): Promise<void> =
         toBalance.amount += trade.principalAmount; // Use 'principalAmount'
       } else if (trade.tradeType === 'sell') {
         // Find the balance entry for the sold currency
-        const fromBalance = user.balance.find((b: { currency: string }) => b.currency === trade.fromCurrency);
+        const fromBalance = user.balance.find((b: { currency: string; }) => b.currency === trade.fromCurrency);
         if (!fromBalance) {
           await session.abortTransaction();
           session.endSession();
