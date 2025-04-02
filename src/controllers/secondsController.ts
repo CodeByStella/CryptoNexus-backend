@@ -6,12 +6,11 @@ import Trade from '@/models/Trade';
 // Helper function for profit percentage
 const getProfitPercentage = (seconds: number): number => {
   const profitMap: { [key: number]: number; } = {
-    30: 6,
-    60: 9,
-    90: 13,
-    120: 16,
-    180: 21,
-    300: 28,
+    30: 12,
+    60: 18,
+    90: 25,
+    180: 32,
+    300: 45,
   };
   return profitMap[seconds] || 6;
 };

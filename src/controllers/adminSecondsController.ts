@@ -6,12 +6,11 @@ import Trade from '@/models/Trade'; // Import Trade model
 // Helper function to calculate profit percentage based on seconds
 const getProfitPercentage = (seconds: number) => {
   const profitMap: { [key: number]: number } = {
-    30: 6,
-    60: 9,
-    90: 13,
-    120: 16,
-    180: 21,
-    300: 28,
+    30: 12,
+    60: 18,
+    90: 25,
+    180: 32,
+    300: 45,
   };
   return profitMap[seconds] || 6; // Default to 6% if seconds not found
 };
