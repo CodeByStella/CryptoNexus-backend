@@ -1,16 +1,16 @@
-import express from 'express';
+import express, { RequestHandler } from 'express';
 import { check, validationResult } from 'express-validator';
-import { register, login, getProfile } from '../controllers/authController';
+import { register, login, getProfile, verifyOtp, resendOtp } from '../controllers/authController';
 import { protect } from '@/middlewares/authMiddleware';
 
 const router = express.Router();
 
 const registerValidation = [
   check('email')
-    .optional({ checkFalsy: true }) 
+    .optional({ checkFalsy: true })
     .isEmail().withMessage('Invalid email format'),
   check('phone')
-    .optional({ checkFalsy: true }) 
+    .optional({ checkFalsy: true })
     .isMobilePhone('any').withMessage('Invalid phone number'),
   check('password')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
@@ -39,8 +39,10 @@ const loginValidation = [
   })
 ];
 
-router.post('/register', registerValidation, register);
-router.post('/login', loginValidation, login);
-router.get('/profile', protect, getProfile)
+router.post('/register', registerValidation, register as RequestHandler);
+router.post('/login', loginValidation, login as RequestHandler);
+router.get('/profile', protect, getProfile as RequestHandler);
+router.post('/verify-otp', verifyOtp as RequestHandler);
+router.post('/resend-otp', resendOtp as RequestHandler);
 
 export default router;

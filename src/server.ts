@@ -31,8 +31,8 @@ app.use('/uploads', express.static('uploads'));
 
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
-  setupChatSocket(io, socket); 
-  setupMarketSocket(io, socket); 
+  setupChatSocket(io, socket);
+  setupMarketSocket(io, socket);
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
   });
@@ -53,6 +53,7 @@ const MONGODB_URI =
   process.env.MONGO_URI ||
   'mongodb+srv://testuser:test123@free-cluster.xucjn.mongodb.net/actisexa?retryWrites=true&w=majority&appName=free-cluster';
 
+console.log({ MONGODB_URI });
 mongoose
   .connect(MONGODB_URI)
   .then(() => {

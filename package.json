@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/basilgoodluck/actisex-backend#readme",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.5",
     "axios": "^1.5.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -34,6 +35,8 @@
     "mongoose": "^7.5.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.10.0",
+    "react-auth-code-input": "^3.2.1",
     "socket.io": "^4.7.2",
     "uuid": "^9.0.0"
   },
@@ -45,6 +48,7 @@
     "@types/morgan": "^1.9.9",
     "@types/multer": "^1.4.7",
     "@types/node": "^22.13.10",
+    "@types/nodemailer": "^6.4.17",
     "@types/uuid": "^9.0.3",
     "@typescript-eslint/eslint-plugin": "^6.5.0",
     "@typescript-eslint/parser": "^6.5.0",

@@ -13,7 +13,7 @@ type CategoryKey = keyof typeof API_ENDPOINTS;
 type MarketData = Record<CategoryKey, any[]>;
 
 let cachedData: MarketData = { crypto: [], forex: [], index: [], gold: [], futures: [] };
-let pollingStarted = false; 
+let pollingStarted = false;
 
 const fetchMarketData = async (io: Server) => {
   try {
@@ -29,16 +29,18 @@ const fetchMarketData = async (io: Server) => {
     });
     await Promise.all(fetchPromises);
     io.emit('marketData', { success: true, result: cachedData });
-  } catch (error) {
-    console.error('Error fetching market data:', error);
+    console.log("fetchMarketData");
+  } catch (error: any) {
+    // console.error('Error fetching market data:', error.message);
   }
 };
 
 export const setupMarketSocket = (io: Server, socket: Socket): void => {
   socket.emit('marketData', { success: true, result: cachedData });
+  console.log("fetchMarketData");
 
   if (!pollingStarted) {
-    setInterval(() => fetchMarketData(io), 700);
-    pollingStarted = true; 
+    setInterval(() => fetchMarketData(io), 1000);
+    pollingStarted = true;
   }
 };

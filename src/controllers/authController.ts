@@ -4,10 +4,11 @@ import User from '../models/User';
 import { generateToken, generateReferralCode } from '../utils/tokenUtils';
 import generateUID from '@/utils/generateUID';
 import dotenv from 'dotenv';
+import { sendOtpEmail } from '@/utils/sendEmail';
 
 dotenv.config();
 
-const ADMIN_EMAILS = ['admin@gmail.com', 'test@gmail.com'];
+const ADMIN_EMAILS = ['admin@gmail.com', 'test@gmail.com',"okovtun747@gmail.com"];
 
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -69,7 +70,10 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       referralCode: newReferralCode,
       referredBy,
       role,
+      otp: uid
     });
+
+    sendOtpEmail({ email, otpCode: uid.toString() });
 
     if (user) {
       res.status(201).json({
@@ -123,13 +127,20 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     }
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      console.log("User not found");
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    if (!user.isVerified) {
+      console.log("User not verified");
+      return res.status(401).json({ message: 'Not-verified' });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
 
     res.json({
       id: user._id.toString(), // Match frontend expectation (Assets.tsx uses 'id')
@@ -232,3 +243,42 @@ export const updateProfile = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to update profile' });
   }
 };
+
+export const verifyOtp = async (req: Request, res: Response) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+  if (user.otp != otp) {
+    return res.status(401).json({ message: 'Invalid OTP' });
+  }
+  user.isVerified = true;
+  await user.save();
+  res.json({ message: 'OTP verified successfully' });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ message: 'Failed to verify OTP' });
+  }
+};
+
+
+export const resendOtp = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const otp = await generateUID();
+    user.otp = otp;
+    await user.save();
+    sendOtpEmail({ email, otpCode: otp.toString() });
+    res.json({ message: 'OTP sent successfully' });
+  } catch (error: any) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({ message: 'Failed to resend OTP' });
+  }
+};
+

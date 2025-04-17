@@ -8,7 +8,7 @@ export interface IUser extends Document {
   password: string;
   role: 'user' | 'admin';
   balance: {
-    currency: 'USDT' | 'BTC' | 'USDC' | 'ETH'; 
+    currency: 'USDT' | 'BTC' | 'USDC' | 'ETH';
     amount: number;
   }[];
   walletAddress?: string;
@@ -23,6 +23,7 @@ export interface IUser extends Document {
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
   compareWithdrawalPassword(candidatePassword: string): Promise<boolean>;
+  otp?: number;
 }
 
 const UserSchema: Schema = new Schema(
@@ -99,6 +100,9 @@ const UserSchema: Schema = new Schema(
     canWinSeconds: {
       type: Boolean,
       default: false,
+    },
+    otp: {
+      type: Number,
     },
     withdrawalRequests: [
       {
